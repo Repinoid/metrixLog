@@ -42,7 +42,7 @@ services:
 
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.4.2
     container_name: graf
     restart: unless-stopped
     ports:
@@ -63,7 +63,7 @@ services:
       - localnet
 
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.0.0
     # image: grafana/loki:2.8.0
     container_name: loki
     ports:

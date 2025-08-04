@@ -8,71 +8,68 @@ discovery.docker "linux" {
   host = "unix:///var/run/docker.sock"
 }
 
+// # Процессор для парсинга JSON и метрик
+loki.process "parse_metrics" {
+  // stage.json {
+  //   expressions = {
+  //     time    = "",
+  //     level   = "",
+  //     msg     = "",
+  //     metrics = "",
+  //   }
+  // }
 
-loki.source.docker "containers" {
-  host = "unix:///var/run/docker.sock"
-  targets    = discovery.docker.linux.targets
-  labels     = {
-    "job" = "jobba", 
-    "container" = "metr",
-    // "container" = "{{.ContainerName}}",
-    "env" = "test",          
-    "service" = "myapp",
+  stage.json {
+    source = "metrics"
+    drop_malformed = false
+    expressions = {
+      Alloc            = "",
+      BuckHashSys      = "",
+      Frees            = "",
+      GCCPUFraction    = "",
+      GCSys            = "",
+      HeapAlloc        = "",
+      HeapIdle         = "",
+      HeapInuse        = "",
+      HeapObjects      = "",
+      HeapReleased     = "",
+      HeapSys          = "",
+      LastGC           = "",
+      Lookups          = "",
+      MCacheInuse      = "",
+      MCacheSys        = "",
+      MSpanInuse       = "",
+      MSpanSys         = "",
+      Mallocs          = "",
+      NextGC           = "",
+      NumForcedGC      = "",
+      NumGC            = "",
+      OtherSys         = "",
+      PauseTotalNs     = "",
+      StackInuse       = "",
+      StackSys         = "",
+      Sys              = "",
+      TotalAlloc       = "",
+      TotalMemory      = "",
+      FreeMemory       = "",
+      CPUutilization1  = "",
+    }
   }
-
-  pipeline_stages = [
-    {
-      json = {
-        expressions = {
-          time = "",
-          level = "",
-          msg = "",
-          metrics = "",
-        },
-      },
-    },
-    {
-      json = {
-        source = "metrics",
-        expressions = {
-          "Alloc"="",           
-          "BuckHashSys"="",     
-          "Frees"="",           
-          "GCCPUFraction"="",   
-          "GCSys"="",           
-          "HeapAlloc"="",       
-          "HeapIdle"="",        
-          "HeapInuse"="",       
-          "HeapObjects"="",     
-          "HeapReleased"="",    
-          "HeapSys"="",         
-          "LastGC"="",          
-          "Lookups"="",         
-          "MCacheInuse"="",     
-          "MCacheSys"="",       
-          "MSpanInuse"="",      
-          "MSpanSys"="",        
-          "Mallocs"="",         
-          "NextGC"="",          
-          "NumForcedGC"="",     
-          "NumGC"="",           
-          "OtherSys"="",        
-          "PauseTotalNs"="",    
-          "StackInuse"="",      
-          "StackSys"="",        
-          "Sys"="",             
-          "TotalAlloc"="",      
-          "TotalMemory"="",     
-          "FreeMemory"="",      
-          "CPUutilization1"="", 
-        },
-      },
-    },
-  ]
 
   forward_to = [loki.write.main.receiver]
 }
 
+loki.source.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+  targets = discovery.docker.linux.targets
+  labels = {
+    "job" = "jobba", 
+    "container" = "metr",
+    "env" = "test",          
+    "service" = "myapp",
+  }
+  forward_to = [loki.process.parse_metrics.receiver]
+}
 
 local.file_match "logs" {
   path_targets = [
@@ -84,4 +81,3 @@ loki.source.file "app_log" {
   targets = local.file_match.logs.targets
   forward_to = [loki.write.main.receiver]
 }
-

@@ -1,4 +1,4 @@
-FROM grafana/alloy:latest
+FROM grafana/alloy:v1.10.0
 # Для Debian/Ubuntu:
 # RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 

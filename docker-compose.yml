@@ -1,0 +1,92 @@
+services:
+
+  app:
+    image: goy
+    container_name: metr
+    # build:
+    #   # путь до докерфайла
+    #   context: ./
+    #   # докерфайл
+    #   dockerfile: ServerDockerFile
+    # ports:
+    #   - "8080:8080"
+    environment:
+      # POLL_DURATION:  1
+      LOG_LEVEL:      debug             # Уровень логирования 
+      LOG_FORMAT:     json  # Ваш логгер уже использует slog.JSONHandler
+      LOG_OUTPUT:     stdout # Все логи в stdout
+
+    restart: unless-stopped
+    networks:
+      - localnet
+
+  alloy:
+    build:
+      context: .
+      dockerfile: Dockerfile.alloy  # используем кастомный Dockerfile с CURL
+    container_name: alloy
+    user: "0:0"  # Run as root (UID 0, GID 0)
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - loki-data:/loki
+      - ./alloy/log:/var/log/myapp
+    # command: [ "run", "/etc/alloy/config.alloy" ]
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
+    depends_on:
+      - loki
+    restart: unless-stopped
+    networks:
+      - localnet
+
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: graf
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./grafana-provisioning:/etc/grafana/provisioning
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: true
+      GF_AUTH_ANONYMOUS_ORG_NAME: Main Org.
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      # GF_SECURITY_ADMIN_USER: admin
+      # GF_SECURITY_ADMIN_PASSWORD: admin
+    depends_on:
+      - loki
+      # - prometheus      
+    networks:
+      - localnet
+
+  loki:
+    image: grafana/loki:latest
+    # image: grafana/loki:2.8.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./local-config.yaml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    command: [ "-config.file=/etc/loki/local-config.yaml", "-config.expand-env=true" ]
+    # command: ["-config.file=/etc/loki/local-config.yaml"]
+    networks:
+      - localnet
+
+volumes:
+  grafana-storage:
+  loki-data:
+
+networks:
+  localnet:
+    driver: bridge
+    name: isem
+
+
+# docker container rm -f graf grafana loki 2>/dev/null || true && docker compose up -d
+
+
+# docker buildx build -f ServerDockerFile -t goy .

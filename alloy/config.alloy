@@ -8,51 +8,57 @@ discovery.docker "linux" {
   host = "unix:///var/run/docker.sock"
 }
 
-// # Процессор для парсинга JSON и метрик
-loki.process "parse_metrics" {
-  // stage.json {
-  //   expressions = {
-  //     time    = "",
-  //     level   = "",
-  //     msg     = "",
-  //     metrics = "",
-  //   }
-  // }
+loki.process "parse_logs" {
+  // Парсим основной JSON лога
+  stage.json {
+    expressions = {
+      "level" = "level",
+      "msg" = "msg",
+      "metrics" = "metrics",
+    }
+  }
 
+  // Парсим вложенный объект metrics как текст
   stage.json {
     source = "metrics"
-    drop_malformed = false
     expressions = {
-      Alloc            = "",
-      BuckHashSys      = "",
-      Frees            = "",
-      GCCPUFraction    = "",
-      GCSys            = "",
-      HeapAlloc        = "",
-      HeapIdle         = "",
-      HeapInuse        = "",
-      HeapObjects      = "",
-      HeapReleased     = "",
-      HeapSys          = "",
-      LastGC           = "",
-      Lookups          = "",
-      MCacheInuse      = "",
-      MCacheSys        = "",
-      MSpanInuse       = "",
-      MSpanSys         = "",
-      Mallocs          = "",
-      NextGC           = "",
-      NumForcedGC      = "",
-      NumGC            = "",
-      OtherSys         = "",
-      PauseTotalNs     = "",
-      StackInuse       = "",
-      StackSys         = "",
-      Sys              = "",
-      TotalAlloc       = "",
-      TotalMemory      = "",
-      FreeMemory       = "",
-      CPUutilization1  = "",
+      "Alloc" = "Alloc",
+      "BuckHashSys" = "BuckHashSys",
+      "Frees" = "Frees",
+      "GCCPUFraction" = "GCCPUFraction",
+      "GCSys" = "GCSys",
+      "HeapAlloc" = "HeapAlloc",
+      "HeapIdle" = "HeapIdle",
+      "HeapInuse" = "HeapInuse",
+      "HeapObjects" = "HeapObjects",
+      "HeapReleased" = "HeapReleased",
+      "HeapSys" = "HeapSys",
+      "LastGC" = "LastGC",
+      "Lookups" = "Lookups",
+      "MCacheInuse" = "MCacheInuse",
+      "MCacheSys" = "MCacheSys",
+      "MSpanInuse" = "MSpanInuse",
+      "MSpanSys" = "MSpanSys",
+      "Mallocs" = "Mallocs",
+      "NextGC" = "NextGC",
+      "NumForcedGC" = "NumForcedGC",
+      "NumGC" = "NumGC",
+      "OtherSys" = "OtherSys",
+      "PauseTotalNs" = "PauseTotalNs",
+      "StackInuse" = "StackInuse",
+      "StackSys" = "StackSys",
+      "Sys" = "Sys",
+      "TotalAlloc" = "TotalAlloc",
+      "TotalMemory" = "TotalMemory",
+      "FreeMemory" = "FreeMemory",
+      "CPUutilization1" = "CPUutilization1",
+    }
+  }
+
+  // Добавляем лейблы (опционально)
+  stage.labels {
+    values = {
+      "log_level" = "level",
     }
   }
 
@@ -63,21 +69,28 @@ loki.source.docker "containers" {
   host = "unix:///var/run/docker.sock"
   targets = discovery.docker.linux.targets
   labels = {
-    "job" = "jobba", 
+    "job" = "jobba",
     "container" = "metr",
-    "env" = "test",          
+    "env" = "test",
     "service" = "myapp",
   }
-  forward_to = [loki.process.parse_metrics.receiver]
+  forward_to = [loki.process.parse_logs.receiver]
 }
 
 local.file_match "logs" {
-  path_targets = [
-    { __path__ = "/var/log/myapp/app.log" },
-  ]
+  path_targets = [{
+    __path__ = "/var/log/myapp/app.log",
+    job = "file_logs",
+    env = "test",
+  }]
 }
 
 loki.source.file "app_log" {
   targets = local.file_match.logs.targets
   forward_to = [loki.write.main.receiver]
 }
+
+
+// {container="metr"} |= "SysMetrix"
+// | regexp `"Alloc":(?P<alloc>\d+)`
+// | line_format "{{.alloc}}"

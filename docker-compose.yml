@@ -85,7 +85,9 @@ networks:
     name: isem
 
 
-# docker container rm -f graf grafana loki 2>/dev/null || true && docker compose up -d
+# docker container rm -f alloy metr loki 2>/dev/null || true && docker compose up -d
 
 
 # docker buildx build -f ServerDockerFile -t goy .
+
+# {container="metr"} | json | msg = "SysMetrix logs"

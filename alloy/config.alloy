@@ -8,6 +8,20 @@ discovery.docker "linux" {
   host = "unix:///var/run/docker.sock"
 }
 
+loki.source.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+  targets = discovery.docker.linux.targets
+  labels = {
+    "job" = "jobba",
+    "container" = "metr",
+    "env" = "test",
+    "service" = "myapp",
+  }
+  // forward_to = [loki.process.parse_logs.receiver]
+   forward_to = [loki.write.main.receiver]
+}
+
+
 loki.process "parse_logs" {
   // Парсим основной JSON лога
   stage.json {
@@ -26,8 +40,10 @@ loki.process "parse_logs" {
   stage.json {
     source = "metrics"
     expressions = {
-      "Alloc" = "Alloc",
-      "BuckHashSys" = "BuckHashSys",
+      "A" = "Alloc",
+      // "Alloc" = "Alloc",
+      "B" = "BuckHashSys",
+      // "BuckHashSys" = "BuckHashSys",
       "Frees" = "Frees",
       "GCCPUFraction" = "GCCPUFraction",
       "GCSys" = "GCSys",
@@ -73,17 +89,6 @@ loki.process "parse_logs" {
   forward_to = [loki.write.main.receiver]
 }
 
-loki.source.docker "containers" {
-  host = "unix:///var/run/docker.sock"
-  targets = discovery.docker.linux.targets
-  labels = {
-    "job" = "jobba",
-    "container" = "metr",
-    "env" = "test",
-    "service" = "myapp",
-  }
-  forward_to = [loki.process.parse_logs.receiver]
-}
 
 local.file_match "logs" {
   path_targets = [{

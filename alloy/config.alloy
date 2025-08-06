@@ -18,6 +18,15 @@ loki.process "parse_logs" {
     }
   }
 
+  stage.log {
+      message = "After first JSON parse"
+      expressions = {
+        "level" = "level",
+        "msg" = "msg",
+        "metrics" = "metrics",
+      }
+    }
+
   // Парсим вложенный объект metrics как текст
   stage.json {
     source = "metrics"
@@ -54,6 +63,15 @@ loki.process "parse_logs" {
       "CPUutilization1" = "CPUutilization1",
     }
   }
+
+  stage.log {
+      message = "After metrics parse"
+      expressions = {
+        "Alloc" = "Alloc",
+        "HeapAlloc" = "HeapAlloc",
+        // другие нужные поля
+      }
+    }
 
   // Добавляем лейблы (опционально)
   stage.labels {

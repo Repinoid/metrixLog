@@ -19,9 +19,9 @@ common:
 schema_config:
   configs:
     - from: "2020-10-24"
-      store: boltdb-shipper
+      store: tsdb
       object_store: filesystem
-      schema: v11
+      schema: v13
       index:
         prefix: index_
         period: 24h
@@ -32,4 +32,4 @@ limits_config:
   max_query_parallelism: 128
   max_streams_per_user: 10000
   max_entries_limit_per_query: 5000
-  allow_structured_metadata: false  # Ключевое изменение!
+  allow_structured_metadata: false

@@ -12,18 +12,15 @@ loki.source.docker "containers" {
   host = "unix:///var/run/docker.sock"
   targets = discovery.docker.linux.targets
   labels = {
-    "job" = "jobba",
     "container" = "metr",
-    "env" = "test",
-    "service" = "myapp",
+    "msg" = "SysMetrix logs",
   }
-  // forward_to = [loki.process.parse_logs.receiver]
-   forward_to = [loki.write.main.receiver]
+  forward_to = [loki.process.parse_logs.receiver]
+  // forward_to = [loki.write.main.receiver]
 }
 
-
 loki.process "parse_logs" {
-  // Парсим основной JSON лога
+  // Парсим основной JSON лог
   stage.json {
     expressions = {
       "level" = "level",
@@ -33,17 +30,19 @@ loki.process "parse_logs" {
   }
 
   stage.output {
-    source = "after_first_json"  // Произвольное имя для этапа
+    source = "msg"
   }
 
-  // Парсим вложенный объект metrics как текст
+
+  // Передача дальше
+  forward_to = [loki.write.main.receiver]
+
+  // Парсим вложенный объект metrics
   stage.json {
     source = "metrics"
     expressions = {
       "A" = "Alloc",
-      // "Alloc" = "Alloc",
       "B" = "BuckHashSys",
-      // "BuckHashSys" = "BuckHashSys",
       "Frees" = "Frees",
       "GCCPUFraction" = "GCCPUFraction",
       "GCSys" = "GCSys",
@@ -74,36 +73,28 @@ loki.process "parse_logs" {
       "CPUutilization1" = "CPUutilization1",
     }
   }
-  
+
   stage.output {
-    source = "after_metrics_parse"  // Произвольное имя для этапа
+    source = "Frees"
   }
 
-  // Добавляем лейблы (опционально)
+  // Добавляем метки
   stage.labels {
     values = {
       "log_level" = "level",
     }
   }
-
-  forward_to = [loki.write.main.receiver]
 }
 
+// local.file_match "logs" {
+//   path_targets = [{
+//     __path__ = "/var/log/myapp/app.log",
+//     job = "file_logs",
+//     env = "test",
+//   }]
+// }
 
-local.file_match "logs" {
-  path_targets = [{
-    __path__ = "/var/log/myapp/app.log",
-    job = "file_logs",
-    env = "test",
-  }]
-}
-
-loki.source.file "app_log" {
-  targets = local.file_match.logs.targets
-  forward_to = [loki.write.main.receiver]
-}
-
-
-// {container="metr"} |= "SysMetrix"
-// | regexp `"Alloc":(?P<alloc>\d+)`
-// | line_format "{{.alloc}}"
+// loki.source.file "app_log" {
+//   targets = local.file_match.logs.targets
+//   forward_to = [loki.write.main.receiver]
+// }

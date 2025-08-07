@@ -1,100 +1,48 @@
-loki.write "main" {
-  endpoint {
-    url = "http://loki:3100/loki/api/v1/push"
-  }
+// This component is responsible for disovering new containers within the docker environment
+discovery.docker "getting_started" {
+        host = "unix:///var/run/docker.sock"
+        refresh_interval = "5s"
 }
 
-discovery.docker "linux" {
-  host = "unix:///var/run/docker.sock"
+// This component is responsible for relabeling the discovered containers
+discovery.relabel "getting_started" {
+        targets = []
+
+        rule {
+                source_labels = ["__meta_docker_container_name"]
+                regex         = "/(.*)"
+                target_label  = "container"
+        }
 }
 
-loki.source.docker "containers" {
-  host = "unix:///var/run/docker.sock"
-  targets = discovery.docker.linux.targets
-  labels = {
-    "container" = "metr",
-    "msg" = "SysMetrix logs",
-  }
-  forward_to = [loki.process.parse_logs.receiver]
-  // forward_to = [loki.write.main.receiver]
+// This component is responsible for collecting logs from the discovered containers
+loki.source.docker "getting_started" {
+        host             = "unix:///var/run/docker.sock"
+        targets          = discovery.docker.getting_started.targets
+        forward_to       = [loki.process.getting_started.receiver]
+        relabel_rules    = discovery.relabel.getting_started.rules
+        refresh_interval = "5s"
 }
 
-loki.process "parse_logs" {
-  // Парсим основной JSON лог
-  stage.json {
-    expressions = {
-      "level" = "level",
-      "msg" = "msg",
-      "metrics" = "metrics",
-    }
-  }
-
-  stage.output {
-    source = "msg"
-  }
-
-
-  // Передача дальше
-  forward_to = [loki.write.main.receiver]
-
-  // Парсим вложенный объект metrics
-  stage.json {
-    source = "metrics"
-    expressions = {
-      "A" = "Alloc",
-      "B" = "BuckHashSys",
-      "Frees" = "Frees",
-      "GCCPUFraction" = "GCCPUFraction",
-      "GCSys" = "GCSys",
-      "HeapAlloc" = "HeapAlloc",
-      "HeapIdle" = "HeapIdle",
-      "HeapInuse" = "HeapInuse",
-      "HeapObjects" = "HeapObjects",
-      "HeapReleased" = "HeapReleased",
-      "HeapSys" = "HeapSys",
-      "LastGC" = "LastGC",
-      "Lookups" = "Lookups",
-      "MCacheInuse" = "MCacheInuse",
-      "MCacheSys" = "MCacheSys",
-      "MSpanInuse" = "MSpanInuse",
-      "MSpanSys" = "MSpanSys",
-      "Mallocs" = "Mallocs",
-      "NextGC" = "NextGC",
-      "NumForcedGC" = "NumForcedGC",
-      "NumGC" = "NumGC",
-      "OtherSys" = "OtherSys",
-      "PauseTotalNs" = "PauseTotalNs",
-      "StackInuse" = "StackInuse",
-      "StackSys" = "StackSys",
-      "Sys" = "Sys",
-      "TotalAlloc" = "TotalAlloc",
-      "TotalMemory" = "TotalMemory",
-      "FreeMemory" = "FreeMemory",
-      "CPUutilization1" = "CPUutilization1",
-    }
-  }
-
-  stage.output {
-    source = "Frees"
-  }
-
-  // Добавляем метки
-  stage.labels {
+// This component is responsible for processing the logs (In this case adding static labels)
+loki.process "getting_started" {
+    stage.static_labels {
     values = {
-      "log_level" = "level",
+      env = "production",
     }
-  }
+}
+    forward_to = [loki.write.getting_started.receiver]
 }
 
-// local.file_match "logs" {
-//   path_targets = [{
-//     __path__ = "/var/log/myapp/app.log",
-//     job = "file_logs",
-//     env = "test",
-//   }]
-// }
+// This component is responsible for writing the logs to Loki
+loki.write "getting_started" {
+        endpoint {
+                url  = "http://loki:3100/loki/api/v1/push"
+        }
+}
 
-// loki.source.file "app_log" {
-//   targets = local.file_match.logs.targets
-//   forward_to = [loki.write.main.receiver]
-// }
+// Enables the ability to view logs in the Alloy UI in realtime
+livedebugging {
+  enabled = true
+}
+

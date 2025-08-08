@@ -6,8 +6,21 @@ loki.write "main" {
 
 discovery.docker "linux" {
   host = "unix:///var/run/docker.sock"
+  refresh_interval = "5s"
 }
 
+// This component is responsible for relabeling the discovered containers
+discovery.relabel "getting_started" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+}
+
+// This component is responsible for collecting logs from the discovered containers
 loki.source.docker "containers" {
   host = "unix:///var/run/docker.sock"
   targets = discovery.docker.linux.targets
@@ -15,6 +28,8 @@ loki.source.docker "containers" {
     "container" = "metr",
     "msg" = "SysMetrix logs",
   }
+  relabel_rules    = discovery.relabel.getting_started.rules
+  refresh_interval = "5s"
   forward_to = [loki.process.parse_logs.receiver]
   // forward_to = [loki.write.main.receiver]
 }
@@ -29,53 +44,53 @@ loki.process "parse_logs" {
     }
   }
 
-  stage.output {
-    source = "msg"
-  }
+  // stage.output {
+  //   source = "msg"
+  // }
 
 
   // Передача дальше
   forward_to = [loki.write.main.receiver]
 
-  // Парсим вложенный объект metrics
-  stage.json {
-    source = "metrics"
-    expressions = {
-      "A" = "Alloc",
-      "B" = "BuckHashSys",
-      "Frees" = "Frees",
-      "GCCPUFraction" = "GCCPUFraction",
-      "GCSys" = "GCSys",
-      "HeapAlloc" = "HeapAlloc",
-      "HeapIdle" = "HeapIdle",
-      "HeapInuse" = "HeapInuse",
-      "HeapObjects" = "HeapObjects",
-      "HeapReleased" = "HeapReleased",
-      "HeapSys" = "HeapSys",
-      "LastGC" = "LastGC",
-      "Lookups" = "Lookups",
-      "MCacheInuse" = "MCacheInuse",
-      "MCacheSys" = "MCacheSys",
-      "MSpanInuse" = "MSpanInuse",
-      "MSpanSys" = "MSpanSys",
-      "Mallocs" = "Mallocs",
-      "NextGC" = "NextGC",
-      "NumForcedGC" = "NumForcedGC",
-      "NumGC" = "NumGC",
-      "OtherSys" = "OtherSys",
-      "PauseTotalNs" = "PauseTotalNs",
-      "StackInuse" = "StackInuse",
-      "StackSys" = "StackSys",
-      "Sys" = "Sys",
-      "TotalAlloc" = "TotalAlloc",
-      "TotalMemory" = "TotalMemory",
-      "FreeMemory" = "FreeMemory",
-      "CPUutilization1" = "CPUutilization1",
-    }
-  }
+  // // Парсим вложенный объект metrics
+  // stage.json {
+  //   source = "metrics"
+  //   expressions = {
+  //     "A" = "Alloc",
+  //     "B" = "BuckHashSys",
+  //     "Frees" = "Frees",
+  //     "GCCPUFraction" = "GCCPUFraction",
+  //     "GCSys" = "GCSys",
+  //     "HeapAlloc" = "HeapAlloc",
+  //     "HeapIdle" = "HeapIdle",
+  //     "HeapInuse" = "HeapInuse",
+  //     "HeapObjects" = "HeapObjects",
+  //     "HeapReleased" = "HeapReleased",
+  //     "HeapSys" = "HeapSys",
+  //     "LastGC" = "LastGC",
+  //     "Lookups" = "Lookups",
+  //     "MCacheInuse" = "MCacheInuse",
+  //     "MCacheSys" = "MCacheSys",
+  //     "MSpanInuse" = "MSpanInuse",
+  //     "MSpanSys" = "MSpanSys",
+  //     "Mallocs" = "Mallocs",
+  //     "NextGC" = "NextGC",
+  //     "NumForcedGC" = "NumForcedGC",
+  //     "NumGC" = "NumGC",
+  //     "OtherSys" = "OtherSys",
+  //     "PauseTotalNs" = "PauseTotalNs",
+  //     "StackInuse" = "StackInuse",
+  //     "StackSys" = "StackSys",
+  //     "Sys" = "Sys",
+  //     "TotalAlloc" = "TotalAlloc",
+  //     "TotalMemory" = "TotalMemory",
+  //     "FreeMemory" = "FreeMemory",
+  //     "CPUutilization1" = "CPUutilization1",
+  //   }
+  // }
 
   stage.output {
-    source = "Frees"
+    source = "metrics"
   }
 
   // Добавляем метки
@@ -84,6 +99,11 @@ loki.process "parse_logs" {
       "log_level" = "level",
     }
   }
+}
+
+// Enables the ability to view logs in the Alloy UI in realtime
+livedebugging {
+  enabled = true
 }
 
 // local.file_match "logs" {

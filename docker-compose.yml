@@ -25,6 +25,10 @@ services:
       context: .
       dockerfile: Dockerfile.alloy  # используем кастомный Dockerfile с CURL
     container_name: alloy
+    ports:
+      - 12345:12345
+      - 4317:4317
+      - 4318:4318
     user: "0:0"  # Run as root (UID 0, GID 0)
     volumes:
       - ./alloy/config.alloy:/etc/alloy/config.alloy
@@ -42,7 +46,7 @@ services:
 
 
   grafana:
-    image: grafana/grafana:10.4.2
+    image: grafana/grafana:11.6.0
     container_name: graf
     restart: unless-stopped
     ports:
@@ -63,7 +67,7 @@ services:
       - localnet
 
   loki:
-    image: grafana/loki:3.0.0
+    image: grafana/loki:3.4.2
     container_name: loki
     ports:
       - "3100:3100"
